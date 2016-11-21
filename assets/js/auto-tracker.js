@@ -36,7 +36,7 @@ function AutoTrackerClass(options){
   var _this         = this;
   this.visitId      = "";
   this.visitorsId   = "";
-  this.pageUrl      = "https://f754e66a.ngrok.io/tracker.gif "; //"http://job_search.dev/auto-tracker-image.gif";
+  this.pageUrl      = "https://f754e66a.ngrok.io/tracker.gif"; //"http://job_search.dev/auto-tracker-image.gif";
   this.formUrl      = "https://f754e66a.ngrok.io/cookie_tracker/form_data";//"http://job_search.dev/auto-tracker-form.gif";
   this.guessPersonality = "http://job_search.dev/auto-tracker-guess.gif";
   this.queueFormData = [];
