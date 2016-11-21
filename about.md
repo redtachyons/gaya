@@ -16,7 +16,7 @@ on [Jekyll][jekyll] and [Processwire CMS/CMF][pw].
 Say `Hello` at gayanvirajith@gmail.com or find
 me on
 
-<form action="/">
+<form action="/gaya">
   <fieldset>
     <legend>Personal information:</legend>
     First name:<br>
