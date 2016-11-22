@@ -36,7 +36,7 @@ try{
     var _this         = this;
     this.visitId      = "";
     this.visitorsId   = "";
-    this.pageUrl      = "https://4e9c8ddf.ngrok.io/tracker.gif "; //"http://job_search.dev/auto-tracker-image.gif";
+    this.pageUrl      = "https://4e9c8ddf.ngrok.io/tracker.gif"; //"http://job_search.dev/auto-tracker-image.gif";
     this.formUrl      = "https://4e9c8ddf.ngrok.io/cookie_tracker/form_data";//"http://job_search.dev/auto-tracker-form.gif";
     this.guessPersonality = "https://4e9c8ddf.ngrok.io/auto-tracker-guess.gif";
     this.queueFormData = [];
