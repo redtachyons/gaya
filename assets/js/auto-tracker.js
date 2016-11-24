@@ -165,7 +165,7 @@ try{
       if(allDataObject['view_change_data'] && Array.isArray(allDataObject['view_change_data']) && ['view_change_data'].length > 0){
         var sendViewData = new XMLHttpRequest();
         var sendData = (JSON.stringify(allDataObject['view_change_data']));
-        sendData['tracker_id'] ="7f06e4e1-57de-4dd4-a03e-9f6d8e01fe35"
+        sendData['data']['tracker_id'] ="7f06e4e1-57de-4dd4-a03e-9f6d8e01fe35"
         sendViewData.open('GET',url+'?data='+sendData,false);
         sendViewData.send();
       }
