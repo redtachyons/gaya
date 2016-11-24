@@ -523,7 +523,8 @@ try{
               referrer: encodeURIComponent(document.referrer),
               vsId: _this.visitorsId,
               vId: _this.visitId,
-              ev:'visit'
+              ev:'visit',
+              cId: '7f06e4e1-57de-4dd4-a03e-9f6d8e01fe35'
             };
             var currentUTMParams = _this.getUTMParams();
             if(typeof currentUTMParams != "undefined" && Object.keys(currentUTMParams).length > 0){
