@@ -16,7 +16,8 @@ try{
     init: function(options){
       var default_options = {
         visitExpire: 4*60*60*1000,
-        visitorExpire: 365*24*60*60*1000
+        visitorExpire: 365*24*60*60*1000,
+        cId: null
       };
 
       /* Set default option if option not available */
@@ -33,15 +34,103 @@ try{
 
   function ClickxTrackerClass(options){
 
-    var _this         = this;
-    this.visitId      = "";
-    this.visitorsId   = "";
-    this.pageUrl      = "https://d6680287.ngrok.io/tracker.gif"; //"http://job_search.dev/auto-tracker-image.gif";
-    this.formUrl      = "https://d6680287.ngrok.io/cookie_tracker/form_data";//"http://job_search.dev/auto-tracker-form.gif";
-    this.guessPersonality = "https://d6680287.ngrok.io/auto-tracker-guess.gif";
-    this.queueFormData = [];
-    this.ajaxOnProcess = false;
+    var _this                 = this;
+    this.cId                  = options.cId;
+    this.visitId              = "";
+    this.visitorsId           = "";
+    this.pageUrl = "http://localhost:3000/tracker.gif "; //"http://job_search.dev/auto-tracker-image.gif";
+    this.formUrl              = "http://localhost:3000/cookie_tracker/form_data";//"http://job_search.dev/auto-tracker-form.gif";
+    this.guessPersonality     = "http://localhost:3000/auto-tracker-guess.gif";
+    this.getUniquFormKeys     = "http://localhost:3000/cookie_tracker/form_details_from_tracker_id/";
+    this.queueFormData        = [];
+    this.ajaxOnProcess        = false;
 
+    this.formUniqueKeys       = [];
+
+
+    this.scanFormAndApplyID = function(){
+      var forms = document.querySelectorAll('form');
+      for(var fID=0; fID <forms.length;fID++){
+        var currentForm = forms[fID];
+        var currentFormElements = currentForm.elements;
+        var formElementString = [];
+        var formElementSelect = [];
+        var formElementInput = [];
+        for(var fEle=0;fEle<currentFormElements.length;fEle++){
+          var mFormElement = currentFormElements[fEle];
+          switch (mFormElement.type) {
+            case 'select-one':
+            case 'select-multiple':
+              formElementSelect.push(mFormElement);
+              break;
+            default:
+              if (mFormElement.type == 'submit') continue
+              formElementInput.push(mFormElement);
+
+              break;
+          }
+        }
+
+
+        //for(var selectField=0; selectField < formElementSelect.length;selectField++){
+        //  mFormElement = formElementSelect[selectField]
+        //  if(mFormElement.id && mFormElement.id!="") formElementString.push('id='+mFormElement.id);
+        //  if(mFormElement.className &&  mFormElement.className!="") formElementString.push('class='+mFormElement.className);
+        //  if(mFormElement.type &&  mFormElement.type!="") formElementString.push('type=select');
+        //  if(mFormElement.name &&  mFormElement.name!="") formElementString.push('name='+mFormElement.name);
+        //  if(mFormElement.placeholder && mFormElement.placeholder!="") formElementString.push('placeholder='+mFormElement.placeholder);
+        //  if(mFormElement.type=="checkbox" || mFormElement.type=="radio"){
+        //    if(mFormElement.value && mFormElement.value!="") formElementString.push('value='+mFormElement.value);
+        //  }
+        //  if(mFormElement.required &&  mFormElement.required!="") formElementString.push('required='+mFormElement.class)
+        //
+        //}
+
+        for (var inputField = 0; inputField < formElementInput.length; inputField++) {
+          mFormElement = formElementInput[inputField];
+          if (mFormElement.id && mFormElement.id != "") formElementString.push('id=' + mFormElement.id);
+          if (mFormElement.className && mFormElement.className != "") formElementString.push('class=' + mFormElement.className);
+          if (mFormElement.type && mFormElement.type != "") formElementString.push('type=' + mFormElement.type);
+          if (mFormElement.name && mFormElement.name != "") formElementString.push('name=' + mFormElement.name);
+          if (mFormElement.placeholder && mFormElement.placeholder != "") formElementString.push('placeholder=' + mFormElement.placeholder);
+          if (mFormElement.required && mFormElement.required != "") formElementString.push('required=' + mFormElement.class)
+        }
+        var SHA256Form = sha256(formElementString.join("&"));
+
+        currentForm.dataset.clickxHash = SHA256Form;
+
+
+
+      }
+
+    }
+    /**
+     * @use : Get Form unique keys
+     */
+
+    this.fetchFormDetailsFromServer = function(cId){
+      if(typeof _this.cId == "undefined" || _this.cId== null) throw new  Error("Customer ID is not present");
+      var fetchFormUniqueKeys = new XMLHttpRequest();
+      fetchFormUniqueKeys.open('GET',encodeURI(_this.getUniquFormKeys+_this.cId),false);
+      fetchFormUniqueKeys.onreadystatechange = function(){
+        if(fetchFormUniqueKeys.readyState == 4 && fetchFormUniqueKeys.status == 200){
+          var responseJSON = JSON.parse(fetchFormUniqueKeys.responseText);
+          var formServerArray = responseJSON;
+          for (var eachForm = 0; eachForm < formServerArray.length; eachForm++) {
+            var eachFormObject = formServerArray[eachForm];
+            var hashedFormElement = document.querySelectorAll('[data-clickx-hash="' + eachFormObject.form_hash + '"]');
+            if (hashedFormElement.length > 0) {
+              console.log(hashedFormElement)
+              hashedFormElement[0].dataset.clickxId = eachFormObject.form_id;
+              delete hashedFormElement[0].dataset.clickxHash
+            }
+          }
+        }
+      };
+      fetchFormUniqueKeys.send();
+    };
+    this.scanFormAndApplyID();
+    this.fetchFormDetailsFromServer(_this.cId);// Fetch Form Unique Keys
     /**
      * Generate secrets key
      * @returns {string}
@@ -84,10 +173,10 @@ try{
     }
     this.getSessionData = function(key){
       allDataObject[key] = JSON.parse(sessionStorage.getItem(key))|| [];
-    }
+    };
     this.removeSessionData = function(key){
       sessionStorage.removeItem(key);
-    }
+    };
     /* Set session data */
     this.setSessionData = function(key,data,clear){
       if(typeof clear=="undefined") clear=false;
@@ -200,13 +289,16 @@ try{
         sendFormData.open('POST',_this.formUrl,true);
         sendFormData.setRequestHeader("Content-Type", "application/json");
         sendFormData.onreadystatechange= function(){
-          console.log(sendFormData.status)
-
           //debugger
           if((sendFormData.readyState == 4)  && sendFormData.status== 200){
             _this.ajaxOnProcess = false;
-            console.log(form)
             if(typeof form !="undefined"){
+              // Clear Data from session
+              try{
+                _this.removeSessionData('form_submit_data');
+              }catch(e){
+                console.log(e)
+              }
               form.submit();
             }
           }else if(sendFormData.status!=200){
@@ -218,7 +310,7 @@ try{
             //nothing
           }
         }
-        sendFormData.send(JSON.stringify({data:(JSON.stringify(currentFormData)),vId:_this.visitId,vsId: _this.visitorsId}));
+        sendFormData.send(JSON.stringify({data:(JSON.stringify(currentFormData)),vId:_this.visitId,vsId: _this.visitorsId,cId:(_this.cId || null)}));
       }catch(e){
         // _this.sendFormDataToQueue(currentFormData)
       }
@@ -252,9 +344,11 @@ try{
                         // Map form
                         var guessAssumptionList = [
                           'company|organization',
-                          'last|lname',
-                          'first|fullname|contact_name|fname|name',
+                          'last|lname|last_name|lastName',
+                          'first|fname|first_name|firstName',
                           'middle|mname',
+                          'fullname|contact_name|name',
+                          'subscribe',
                           'title|role',
                           'salutation|greeting',
                           'nick',
@@ -266,7 +360,7 @@ try{
                           'fax',
                           'site|link|url',
                           'postal|zip|code',
-                          'country|nation',
+                          'country|nation|nationality',
                           'twitter',
                           'facebook',
                           'google',
@@ -275,10 +369,17 @@ try{
 
                         for(var ri=0; ri < guessAssumptionList.length;ri++){
                           if((new RegExp(guessAssumptionList[ri],'i')).test(element.name)){
-                            console.log(new RegExp(guessAssumptionList[ri],'i'))
-                            var guessArray = element.name.match(new RegExp(guessAssumptionList[ri],'i'));
-                            if(Array.isArray(guessArray) && guessArray.length > 0){
-                              shouldSave['guess'] = guessArray[0];
+                            try{
+                              var guessArray = element.name.match(new RegExp(guessAssumptionList[ri],'i'));
+                              if(Array.isArray(guessArray) && guessArray.length > 0){
+                                var guessValue = getCurrespondingGuessName(guessArray[0]);
+                                if(guessValue!=null){
+                                  shouldSave['guess'] =guessValue;
+                                }
+                                break;
+                              }
+                            }catch(e){
+                              console.log(e)
                             }
                           }
                         }
@@ -294,6 +395,7 @@ try{
                 }
                 if(Array.isArray(currentFormData) && currentFormData.length > 0){
                   _this.sendFormDataToServer(currentFormData,form)
+                  // Check existing forms and remove it
                 }
               }catch(e){
                 console.log(e)
@@ -325,6 +427,7 @@ try{
           guess['visitorId'] = _this.visitorsId;
           guess[key] = value;
           guess['guess'] = key;
+          guess['cId'] = _this.cId;
           console.log(guess)
           var sendGuessRequest = new XMLHttpRequest();
           var url = _this.guessPersonality+'?data='+encodeURIComponent(JSON.stringify(guess));
@@ -398,8 +501,8 @@ try{
           referrer: encodeURIComponent(document.referrer),
           vsId: _this.visitorsId,
           vId: _this.visitId,
-          ev:'visit',
-          cId: '7f06e4e1-57de-4dd4-a03e-9f6d8e01fe35'
+          cId: _this.cId,
+          ev:'visit'
         };
         currentUTMParams = _this.getUTMParams();
         if(typeof currentUTMParams != "undefined" && Object.keys(currentUTMParams).length > 0){
@@ -473,8 +576,8 @@ try{
               referrer: encodeURIComponent(document.referrer),
               vsId: _this.visitorsId,
               vId: _this.visitId,
-              ev:'visit',
-              cId: '7f06e4e1-57de-4dd4-a03e-9f6d8e01fe35'
+              cId: _this.cId,
+              ev:'visit'
             };
             currentUTMParams = _this.getUTMParams();
             if(typeof currentUTMParams != "undefined" && Object.keys(currentUTMParams).length > 0){
@@ -524,8 +627,8 @@ try{
               referrer: encodeURIComponent(document.referrer),
               vsId: _this.visitorsId,
               vId: _this.visitId,
-              ev:'visit',
-              cId: '7f06e4e1-57de-4dd4-a03e-9f6d8e01fe35'
+              cId: _this.cId,
+              ev:'visit'
             };
             var currentUTMParams = _this.getUTMParams();
             if(typeof currentUTMParams != "undefined" && Object.keys(currentUTMParams).length > 0){
@@ -581,6 +684,306 @@ try{
     }
 
   }
+
+  function getCurrespondingGuessName(name) {
+    "use strict";
+    var currentGuess = false;
+    switch (name) {
+      case 'company':
+      case 'organization':
+        currentGuess = 'company';
+        break;
+      case 'last':
+      case 'lname':
+      case 'last_name':
+      case 'lastName':
+        currentGuess = 'lname';
+        break;
+      case 'first':
+      case 'fname':
+      case 'first_name':
+      case 'firstName':
+        currentGuess = 'fname';
+        break;
+      case 'fullname':
+      case 'contact_name':
+      case 'name':
+        currentGuess = 'name';
+        break;
+      case 'middle':
+      case 'mname':
+        currentGuess = 'mname';
+        break;
+      case 'title':
+      case 'role':
+        currentGuess = 'title';
+        break;
+      case 'salutation':
+      case 'greeting':
+        currentGuess = 'salutation';
+        break;
+      case 'nick':
+        currentGuess = 'nick';
+        break;
+      case 'email':
+        currentGuess = 'email';
+        break;
+      case 'tel':
+      case 'phone':
+      case 'contact':
+        currentGuess = 'phone';
+        break;
+      case 'address':
+      case 'city':
+      case 'town':
+      case 'location':
+        currentGuess = 'city';
+        break;
+      case 'employee':
+      case 'team':
+        currentGuess = 'team';
+        break;
+      case 'employer':
+        currentGuess = 'employer';
+        break;
+      case 'birthday':
+      case 'dob':
+        currentGuess = 'dob';
+        break;
+      case 'fax':
+        currentGuess = 'fax';
+        break;
+      case 'site':
+      case 'link':
+      case 'url':
+        currentGuess = 'url';
+        break;
+      case 'postal':
+      case 'zip':
+      case 'code':
+        currentGuess = 'zip';
+        break;
+      case 'country':
+      case 'nation':
+        currentGuess = 'nationality';
+        break;
+      case 'twitter':
+        currentGuess = 'twitter';
+        break;
+      case 'facebook':
+        currentGuess = 'facebook';
+        break;
+      case 'google':
+        currentGuess = 'google';
+        break;
+      case 'linkedin':
+        currentGuess = 'linkedin';
+        break;
+      default :
+        currentGuess= null
+    }
+    return currentGuess;
+  }
+
+  /**
+   *
+   * @param message
+   * @returns {*}
+   * @refer https://github.com/emn178/js-sha256/blob/master/src/sha256.js
+   * @detail https://github.com/emn178/js-sha256
+   */
+  function sha256(message) {
+    try{
+
+      if(typeof message == "undefined"){
+        throw new Error("Please provide some string to convert")
+      }
+      var HEX_CHARS = '0123456789abcdef'.split('');
+      var EXTRA = [-2147483648, 8388608, 32768, 128];
+      var SHIFT = [24, 16, 8, 0];
+      var K =[0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+
+      var blocks = [];
+
+
+      var notString = typeof message != 'string';
+      if (notString && message.constructor == root.ArrayBuffer) {
+        message = new Uint8Array(message);
+      }
+
+      var h0, h1, h2, h3, h4, h5, h6, h7, block, code, first = true, end = false,
+        i, j, index = 0, start = 0, bytes = 0, length = message.length,
+        s0, s1, maj, t1, t2, ch, ab, da, cd, bc;
+
+
+      h0 = 0x6a09e667;
+      h1 = 0xbb67ae85;
+      h2 = 0x3c6ef372;
+      h3 = 0xa54ff53a;
+      h4 = 0x510e527f;
+      h5 = 0x9b05688c;
+      h6 = 0x1f83d9ab;
+      h7 = 0x5be0cd19;
+      block = 0;
+      do {
+        blocks[0] = block;
+        blocks[16] = blocks[1] = blocks[2] = blocks[3] =
+          blocks[4] = blocks[5] = blocks[6] = blocks[7] =
+            blocks[8] = blocks[9] = blocks[10] = blocks[11] =
+              blocks[12] = blocks[13] = blocks[14] = blocks[15] = 0;
+        if (notString) {
+          for (i = start;index < length && i < 64;++index) {
+            blocks[i >> 2] |= message[index] << SHIFT[i++ & 3];
+          }
+        } else {
+          for (i = start;index < length && i < 64;++index) {
+            code = message.charCodeAt(index);
+            if (code < 0x80) {
+              blocks[i >> 2] |= code << SHIFT[i++ & 3];
+            } else if (code < 0x800) {
+              blocks[i >> 2] |= (0xc0 | (code >> 6)) << SHIFT[i++ & 3];
+              blocks[i >> 2] |= (0x80 | (code & 0x3f)) << SHIFT[i++ & 3];
+            } else if (code < 0xd800 || code >= 0xe000) {
+              blocks[i >> 2] |= (0xe0 | (code >> 12)) << SHIFT[i++ & 3];
+              blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3f)) << SHIFT[i++ & 3];
+              blocks[i >> 2] |= (0x80 | (code & 0x3f)) << SHIFT[i++ & 3];
+            } else {
+              code = 0x10000 + (((code & 0x3ff) << 10) | (message.charCodeAt(++index) & 0x3ff));
+              blocks[i >> 2] |= (0xf0 | (code >> 18)) << SHIFT[i++ & 3];
+              blocks[i >> 2] |= (0x80 | ((code >> 12) & 0x3f)) << SHIFT[i++ & 3];
+              blocks[i >> 2] |= (0x80 | ((code >> 6) & 0x3f)) << SHIFT[i++ & 3];
+              blocks[i >> 2] |= (0x80 | (code & 0x3f)) << SHIFT[i++ & 3];
+            }
+          }
+        }
+        bytes += i - start;
+        start = i - 64;
+        if (index == length) {
+          blocks[i >> 2] |= EXTRA[i & 3];
+          ++index;
+        }
+        block = blocks[16];
+        if (index > length && i < 56) {
+          blocks[15] = bytes << 3;
+          end = true;
+        }
+
+        var a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+        for (j = 16;j < 64;++j) {
+          // rightrotate
+          t1 = blocks[j - 15];
+          s0 = ((t1 >>> 7) | (t1 << 25)) ^ ((t1 >>> 18) | (t1 << 14)) ^ (t1 >>> 3);
+          t1 = blocks[j - 2];
+          s1 = ((t1 >>> 17) | (t1 << 15)) ^ ((t1 >>> 19) | (t1 << 13)) ^ (t1 >>> 10);
+          blocks[j] = blocks[j - 16] + s0 + blocks[j - 7] + s1 << 0;
+        }
+
+        bc = b & c;
+        for (j = 0;j < 64;j += 4) {
+          if (first) {
+            ab = 704751109;
+            t1 = blocks[0] - 210244248;
+            h = t1 - 1521486534 << 0;
+            d = t1 + 143694565 << 0;
+            first = false;
+          } else {
+            s0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+            s1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+            ab = a & b;
+            maj = ab ^ (a & c) ^ bc;
+            ch = (e & f) ^ (~e & g);
+            t1 = h + s1 + ch + K[j] + blocks[j];
+            t2 = s0 + maj;
+            h = d + t1 << 0;
+            d = t1 + t2 << 0;
+          }
+          s0 = ((d >>> 2) | (d << 30)) ^ ((d >>> 13) | (d << 19)) ^ ((d >>> 22) | (d << 10));
+          s1 = ((h >>> 6) | (h << 26)) ^ ((h >>> 11) | (h << 21)) ^ ((h >>> 25) | (h << 7));
+          da = d & a;
+          maj = da ^ (d & b) ^ ab;
+          ch = (h & e) ^ (~h & f);
+          t1 = g + s1 + ch + K[j + 1] + blocks[j + 1];
+          t2 = s0 + maj;
+          g = c + t1 << 0;
+          c = t1 + t2 << 0;
+          s0 = ((c >>> 2) | (c << 30)) ^ ((c >>> 13) | (c << 19)) ^ ((c >>> 22) | (c << 10));
+          s1 = ((g >>> 6) | (g << 26)) ^ ((g >>> 11) | (g << 21)) ^ ((g >>> 25) | (g << 7));
+          cd = c & d;
+          maj = cd ^ (c & a) ^ da;
+          ch = (g & h) ^ (~g & e);
+          t1 = f + s1 + ch + K[j + 2] + blocks[j + 2];
+          t2 = s0 + maj;
+          f = b + t1 << 0;
+          b = t1 + t2 << 0;
+          s0 = ((b >>> 2) | (b << 30)) ^ ((b >>> 13) | (b << 19)) ^ ((b >>> 22) | (b << 10));
+          s1 = ((f >>> 6) | (f << 26)) ^ ((f >>> 11) | (f << 21)) ^ ((f >>> 25) | (f << 7));
+          bc = b & c;
+          maj = bc ^ (b & d) ^ cd;
+          ch = (f & g) ^ (~f & h);
+          t1 = e + s1 + ch + K[j + 3] + blocks[j + 3];
+          t2 = s0 + maj;
+          e = a + t1 << 0;
+          a = t1 + t2 << 0;
+        }
+
+        h0 = h0 + a << 0;
+        h1 = h1 + b << 0;
+        h2 = h2 + c << 0;
+        h3 = h3 + d << 0;
+        h4 = h4 + e << 0;
+        h5 = h5 + f << 0;
+        h6 = h6 + g << 0;
+        h7 = h7 + h << 0;
+      } while (!end);
+
+      var hex = HEX_CHARS[(h0 >> 28) & 0x0F] + HEX_CHARS[(h0 >> 24) & 0x0F] +
+        HEX_CHARS[(h0 >> 20) & 0x0F] + HEX_CHARS[(h0 >> 16) & 0x0F] +
+        HEX_CHARS[(h0 >> 12) & 0x0F] + HEX_CHARS[(h0 >> 8) & 0x0F] +
+        HEX_CHARS[(h0 >> 4) & 0x0F] + HEX_CHARS[h0 & 0x0F] +
+        HEX_CHARS[(h1 >> 28) & 0x0F] + HEX_CHARS[(h1 >> 24) & 0x0F] +
+        HEX_CHARS[(h1 >> 20) & 0x0F] + HEX_CHARS[(h1 >> 16) & 0x0F] +
+        HEX_CHARS[(h1 >> 12) & 0x0F] + HEX_CHARS[(h1 >> 8) & 0x0F] +
+        HEX_CHARS[(h1 >> 4) & 0x0F] + HEX_CHARS[h1 & 0x0F] +
+        HEX_CHARS[(h2 >> 28) & 0x0F] + HEX_CHARS[(h2 >> 24) & 0x0F] +
+        HEX_CHARS[(h2 >> 20) & 0x0F] + HEX_CHARS[(h2 >> 16) & 0x0F] +
+        HEX_CHARS[(h2 >> 12) & 0x0F] + HEX_CHARS[(h2 >> 8) & 0x0F] +
+        HEX_CHARS[(h2 >> 4) & 0x0F] + HEX_CHARS[h2 & 0x0F] +
+        HEX_CHARS[(h3 >> 28) & 0x0F] + HEX_CHARS[(h3 >> 24) & 0x0F] +
+        HEX_CHARS[(h3 >> 20) & 0x0F] + HEX_CHARS[(h3 >> 16) & 0x0F] +
+        HEX_CHARS[(h3 >> 12) & 0x0F] + HEX_CHARS[(h3 >> 8) & 0x0F] +
+        HEX_CHARS[(h3 >> 4) & 0x0F] + HEX_CHARS[h3 & 0x0F] +
+        HEX_CHARS[(h4 >> 28) & 0x0F] + HEX_CHARS[(h4 >> 24) & 0x0F] +
+        HEX_CHARS[(h4 >> 20) & 0x0F] + HEX_CHARS[(h4 >> 16) & 0x0F] +
+        HEX_CHARS[(h4 >> 12) & 0x0F] + HEX_CHARS[(h4 >> 8) & 0x0F] +
+        HEX_CHARS[(h4 >> 4) & 0x0F] + HEX_CHARS[h4 & 0x0F] +
+        HEX_CHARS[(h5 >> 28) & 0x0F] + HEX_CHARS[(h5 >> 24) & 0x0F] +
+        HEX_CHARS[(h5 >> 20) & 0x0F] + HEX_CHARS[(h5 >> 16) & 0x0F] +
+        HEX_CHARS[(h5 >> 12) & 0x0F] + HEX_CHARS[(h5 >> 8) & 0x0F] +
+        HEX_CHARS[(h5 >> 4) & 0x0F] + HEX_CHARS[h5 & 0x0F] +
+        HEX_CHARS[(h6 >> 28) & 0x0F] + HEX_CHARS[(h6 >> 24) & 0x0F] +
+        HEX_CHARS[(h6 >> 20) & 0x0F] + HEX_CHARS[(h6 >> 16) & 0x0F] +
+        HEX_CHARS[(h6 >> 12) & 0x0F] + HEX_CHARS[(h6 >> 8) & 0x0F] +
+        HEX_CHARS[(h6 >> 4) & 0x0F] + HEX_CHARS[h6 & 0x0F];
+
+      hex += HEX_CHARS[(h7 >> 28) & 0x0F] + HEX_CHARS[(h7 >> 24) & 0x0F] +
+        HEX_CHARS[(h7 >> 20) & 0x0F] + HEX_CHARS[(h7 >> 16) & 0x0F] +
+        HEX_CHARS[(h7 >> 12) & 0x0F] + HEX_CHARS[(h7 >> 8) & 0x0F] +
+        HEX_CHARS[(h7 >> 4) & 0x0F] + HEX_CHARS[h7 & 0x0F];
+
+      return hex;
+    }catch(e){
+      alert("SHA256 Errors"+e)
+    }
+
+  };
 }catch(e){
   console.log(e)
 }
+
