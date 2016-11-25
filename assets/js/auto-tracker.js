@@ -38,7 +38,7 @@ try{
     this.cId                  = options.cId;
     this.visitId              = "";
     this.visitorsId           = "";
-    this.pageUrl              = "https://1b0396d7.ngrok.io/tracker.gif "; //"http://job_search.dev/auto-tracker-image.gif";
+    this.pageUrl              = "https://1b0396d7.ngrok.io/tracker.gif"; //"http://job_search.dev/auto-tracker-image.gif";
     this.formUrl              = "https://1b0396d7.ngrok.io/cookie_tracker/form_data";//"http://job_search.dev/auto-tracker-form.gif";
     this.guessPersonality     = "https://1b0396d7.ngrok.io/auto-tracker-guess.gif";
     this.getUniquFormKeys     = "https://1b0396d7.ngrok.io/cookie_tracker/form_details_from_tracker_id/";
