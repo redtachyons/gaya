@@ -23,6 +23,7 @@ me on
     <input type="text" name="firstname" value="Mickey"><br>
     Last name:<br>
     <input type="text" name="lastname" value="Mouse"><br><br>
+    <input type="email" name="email" value=""><br><br>
     <input type="submit" value="Submit">
   </fieldset>
 </form>
