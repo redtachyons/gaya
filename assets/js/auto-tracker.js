@@ -38,10 +38,10 @@ try{
     this.cId                  = options.cId;
     this.visitId              = "";
     this.visitorsId           = "";
-    this.pageUrl              = "https://c3b9eba4.ngrok.io/tracker.gif"; //"http://job_search.dev/auto-tracker-image.gif";
-    this.formUrl              = "https://c3b9eba4.ngrok.io/cookie_tracker/form_data";//"http://job_search.dev/auto-tracker-form.gif";
-    this.guessPersonality     = "https://c3b9eba4.ngrok.io/auto-tracker-guess.gif";
-    this.getUniquFormKeys     = "https://c3b9eba4.ngrok.io/cookie_tracker/form_details_from_tracker_id/";
+    this.pageUrl              = "https://b9c4c191.ngrok.io/tracker.gif"; //"http://job_search.dev/auto-tracker-image.gif";
+    this.formUrl              = "https://b9c4c191.ngrok.io/cookie_tracker/form_data";//"http://job_search.dev/auto-tracker-form.gif";
+    this.guessPersonality     = "https://b9c4c191.ngrok.ioo/auto-tracker-guess.gif";
+    this.getUniquFormKeys     = "https://b9c4c191.ngrok.io/cookie_tracker/form_details_from_tracker_id/";
     this.queueFormData        = [];
     this.ajaxOnProcess        = false;
 
